@@ -1,4 +1,4 @@
-@startuml
+@startuml AccountBilling
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 
 title C4 Component Diagram - Account & Billing Service
