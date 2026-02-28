@@ -51,7 +51,7 @@
 ### 5. Визуализация контекста системы — диаграмма С4
 
 
-[AS-IS контекстная диаграмма](schemas/as-is_context.png)
+[AS-IS контекстная диаграмма](schemas/Context.puml)
 
 
 <img src="schemas/as-is_context.png">
@@ -62,11 +62,16 @@
 
 **Диаграмма контейнеров (Containers)**
 
-Добавьте диаграмму.
+[Диаграмма контейнеров](schemas/Container.puml)
+
+
+![Диаграмма контейнеров](schemas/c4_container.png)
 
 **Диаграмма компонентов (Components)**
 
-Добавьте диаграмму для каждого из выделенных микросервисов.
+[Диаграмма компонентов Account/Billing](schemas/c4_account_billing_component.puml)
+
+![Диаграмма компонентов Account/Billing](с4_account_billing_component.png)
 
 **Диаграмма кода (Code)**
 

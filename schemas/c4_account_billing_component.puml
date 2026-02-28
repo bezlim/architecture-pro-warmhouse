@@ -1,0 +1,59 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C4 Component Diagram - Account & Billing Service
+
+' Явное направление сверху вниз
+top to bottom direction
+
+' Пользователь объявляется ПЕРВЫМ (важно для позиционирования)
+Person_Ext(user, "Пользователь", "Владелец аккаунта")
+
+' Граница основного сервиса
+Boundary(account_container, "Account & Billing Service", "Python") {
+    
+    Component(api_controller, "API Controller", "REST API", "Обработка HTTP запросов")
+    Component(auth_middleware, "Auth Middleware", "JWT Validator", "Проверка токенов")
+    
+    Component(profile_component, "Profile & House Component", "Business Logic", "Профиль, настройки, привязка к домам")
+    
+    Component(subscription_component, "Subscription & Limits Component", "Business Logic", "Тарифы, подписки, лимиты, квоты")
+    
+    Component(payment_component, "Payment & Webhook Component", "Business Logic", "Платежи, инвойсы, вебхуки от шлюза")
+    
+    ComponentDb(account_db, "Account Database", "PostgreSQL", "Профили, подписки, транзакции")
+}
+
+Boundary(ext, "Внешние сервисы") {
+System_Ext(payment_gateway, "Платежный Шлюз", "Обработка платежей")
+System_Ext(home_service, "Smart Home Core", "Получатель событий о лимитах")
+System_Ext(notification_service, "Notification Service", "Email, SMS, Push уведомления")
+}
+account_db -[hidden]-> payment_gateway
+account_db -[hidden]-> home_service
+account_db -[hidden]-> notification_service
+account_db -[hidden]-> notification_service
+account_db -[hidden]-> notification_service
+account_db -[hidden]-> notification_service
+' === Основные связи ===
+Rel(user, api_controller, "HTTPS запросы", "JSON/REST")
+Rel(api_controller, auth_middleware, "Проверка токена", "Internal")
+
+Rel(api_controller, profile_component, "CRUD профиля и домов", "Internal")
+Rel(api_controller, subscription_component, "Подписка и лимиты", "Internal")
+Rel(api_controller, payment_component, "Платежи и вебхуки", "Internal")
+
+Rel(profile_component, account_db, "SQL", "Read/Write")
+Rel(subscription_component, account_db, "SQL", "Read/Write")
+Rel(payment_component, account_db, "SQL", "Read/Write")
+
+Rel(payment_component, payment_gateway, "Создание платежа", "HTTPS")
+Rel(payment_component, payment_gateway, "Получение вебхуков", "HTTPS")
+
+Rel(payment_component, notification_service, "Отправка уведомлений", "HTTPS/API")
+Rel(subscription_component, notification_service, "Отправка уведомлений", "HTTPS/API")
+Rel(notification_service, user, "Email/SMS/Push", "SMTP/SMS/Push")
+
+Rel(subscription_component, home_service, "Async Event", "Limit Changed")
+
+@enduml

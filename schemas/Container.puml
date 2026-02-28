@@ -1,0 +1,56 @@
+@startuml SmartHomeContainer
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+top to bottom direction
+
+title C4 Container Diagram - Экосистема Умного Дома
+
+Person_Ext(user, "Пользователь", "Настраивает и управляет устройствами")
+
+' Внешний провайдер идентификации
+System_Ext(identity_provider, "Identity Provider", "Аутентификация, JWT-токены, MFA")
+
+Container_Boundary(b1, "SaaS Платформа Умного Дома") {
+    Container(web_app, "Web Приложение", "HTML/JS", "Личный кабинет, настройка устройств")
+    Container(mobile_app, "Mobile Приложение", "iOS/Android", "Управление домом, уведомления, видеопоток")
+    
+    Container(api_gateway, "API Gateway", "Nginx", "Валидация JWT, маршрутизация")
+    
+    Container_Boundary(core_services, "Бэкенд Сервисы") {
+        Container(account_billing_svc, "User Profile/Billing Service", "Python", "Профили, настройки, привязка к дому, Биллинг")
+        Container(home_svc, "Smart Home Core", "Go", "Устройства, телеметрия, управление, инвентарь")
+        Container(vendor_svc, "Vendor Integration Service", "Python", "Адаптеры API вендоров, протоколы")
+    }
+}
+
+System_Ext(payment_gateway, "Платежный Шлюз", "Обработка платежей")
+System_Ext(vendor, "Вендор", "API устройств вендора\nHTTPS/MQTT/RTSP/WebRTC, ")
+
+
+' Аутентификация пользователя через IdP
+Rel(user, identity_provider, "Вход/Регистрация", "OAuth2/OIDC")
+Rel(user, web_app, "Использует", "HTTPS")
+Rel(user, mobile_app, "Использует", "HTTPS")
+
+' Приложения отправляют запросы с токеном
+Rel(web_app, api_gateway, "API запросы + JWT", "HTTPS")
+Rel(mobile_app, api_gateway, "API запросы + JWT", "HTTPS")
+
+' Gateway валидирует токен с IdP
+Rel(api_gateway, identity_provider, "Валидация JWT", "HTTPS")
+
+' Gateway маршрутизирует к сервисам
+Rel(api_gateway, account_billing_svc, "Маршрутизирует", "HTTP")
+Rel(api_gateway, home_svc, "Маршрутизирует", "HTTP")
+Rel(api_gateway, vendor_svc, "Маршрутизирует", "HTTP")
+
+' Связи между сервисами
+Rel(account_billing_svc, home_svc, "Передача лимитов устройств", "Events")
+Rel(home_svc, vendor_svc, "Запрос к устройству вендора", "gRPC/HTTP")
+Rel(vendor_svc, home_svc, "Вебхуки от вендоров", "HTTP Callback")
+
+' Связи с внешними системами
+Rel(account_billing_svc, payment_gateway, "Обработка платежей", "HTTPS")
+Rel(vendor_svc, vendor, "Интеграция", "HTTPS/RTSP/WebRTC/MQTT")
+
+@enduml
