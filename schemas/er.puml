@@ -1,0 +1,148 @@
+@startuml c4_core_er_diagram
+title ER Diagram - Smart Home Core Service
+
+skinparam entityAttributeIconSize 0
+skinparam nodesep 40
+skinparam ranksep 40
+
+' ============================================
+' USERS & ACCOUNTS
+' ============================================
+entity "users" {
+    *id : UUID <<PK>>
+    --
+    auth0_id : VARCHAR(255) <<UK>>
+    email : VARCHAR(255)
+    name : VARCHAR(255)
+    timezone : VARCHAR(50)
+    language : VARCHAR(10)
+    created_at : TIMESTAMP
+    updated_at : TIMESTAMP
+}
+
+entity "vendor_accounts" {
+    *id : UUID <<PK>>
+    --
+    user_id : UUID <<FK>>
+    vendor_id : VARCHAR(100)
+    access_token : TEXT
+    refresh_token : TEXT
+    vendor_user_id : VARCHAR(255)
+    expires_at : TIMESTAMP
+    status : VARCHAR(50)
+    created_at : TIMESTAMP
+    updated_at : TIMESTAMP
+}
+
+' ============================================
+' DEVICES
+' ============================================
+entity "devices" {
+    *id : UUID <<PK>>
+    --
+    user_id : UUID <<FK>>
+    vendor_account_id : UUID <<FK>>
+    vendor_device_id : VARCHAR(255)
+    type : VARCHAR(100)
+    name : VARCHAR(255)
+    location : VARCHAR(255)
+    status : VARCHAR(50)
+    last_seen : TIMESTAMP
+    metadata : JSONB
+    created_at : TIMESTAMP
+    updated_at : TIMESTAMP
+}
+
+' ============================================
+' TELEMETRY
+' ============================================
+entity "telemetry" {
+    *time : TIMESTAMPTZ <<PK>>
+    *device_id : UUID <<PK, FK>>
+    *metric_name : VARCHAR(100) <<PK>>
+    --
+    metric_value : DECIMAL(20,6)
+    unit : VARCHAR(50)
+}
+
+' ============================================
+' COMMANDS
+' ============================================
+entity "commands" {
+    *id : UUID <<PK>>
+    --
+    device_id : UUID <<FK>>
+    user_id : UUID <<FK>>
+    action : VARCHAR(100)
+    payload : JSONB
+    status : VARCHAR(50)
+    error_message : TEXT
+    created_at : TIMESTAMP
+    completed_at : TIMESTAMP
+}
+
+' ============================================
+' HOUSES & MEMBERS
+' ============================================
+entity "houses" {
+    *id : UUID <<PK>>
+    --
+    owner_id : UUID <<FK>>
+    name : VARCHAR(255)
+    created_at : TIMESTAMP
+}
+
+entity "house_members" {
+    *house_id : UUID <<PK, FK>>
+    *user_id : UUID <<PK, FK>>
+    --
+    role : VARCHAR(50)
+    invited_at : TIMESTAMP
+    accepted_at : TIMESTAMP
+}
+
+entity "house_devices" {
+    *house_id : UUID <<PK, FK>>
+    *device_id : UUID <<PK, FK>>
+    --
+    added_at : TIMESTAMP
+}
+
+' ============================================
+' RELATIONSHIPS
+' ============================================
+
+' Users to Vendor Accounts
+users ||--o{ vendor_accounts : "owns"
+
+' Users to Devices
+users ||--o{ devices : "owns"
+
+' Vendor Accounts to Devices
+vendor_accounts ||--o{ devices : "linked to"
+
+' Devices to Telemetry
+devices ||--o{ telemetry : "generates"
+
+' Devices to Commands
+devices ||--o{ commands : "receives"
+
+' Users to Commands
+users ||--o{ commands : "creates"
+
+' Users to Houses
+users ||--o{ houses : "owns"
+
+' Houses to Members
+houses ||--o{ house_members : "has members"
+
+' Users to House Members
+users ||--o{ house_members : "belongs to"
+
+' Houses to Devices
+houses ||--o{ house_devices : "contains"
+
+' Devices to House Devices
+devices ||--o{ house_devices : "placed in"
+
+@enduml

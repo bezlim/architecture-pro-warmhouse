@@ -1,0 +1,35 @@
+@startuml c4_vendor_component
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C4 Component Diagram - Vendor Integration Service
+
+Container_Boundary(vendor_container, "Vendor Integration Service") {
+    
+    Component(api_controller, "API Controller", "REST API + MQTT + Webhooks", "Обработка HTTP запросов, MQTT, вебхуки вендоров")
+    
+    Component(mqtt_adapter, "MQTT Adapter Component", "Protocol Handler", "Приём данных от устройств через MQTT")
+    
+    Component(vendor_adapter, "Vendor Adapter Component", "Protocol Handler", "Интеграция с облаками вендоров (HTTP API)")
+    
+    Component(protocol_component, "Protocol Translation Component", "Business Logic", "Трансформация и нормализация данных")
+    
+    ComponentDb(vendor_db, "Vendor Database", "PostgreSQL", "Конфигурации вендоров, токены, маппинг устройств")
+}
+
+System_Ext(core_service, "Smart Home Core Service", "Устройства, телеметрия, команды")
+System_Ext(account_service, "Account & Billing Service", "Валидация пользователей")
+System_Ext(vendor_cloud_a, "Device Vendor", "API устройств вендора")
+
+Rel(vendor_cloud_a, api_controller, "Вебхуки событий", "HTTPS/JSON")
+Rel(api_controller, vendor_cloud_a, "Запросы API", "HTTPS/JSON")
+Rel(api_controller, core_service, "Поток телеметрии", "gRPC/HTTPS")
+Rel(core_service, api_controller, "Команды устройствам", "gRPC/HTTPS")
+Rel(account_service, api_controller, "Валидация пользователя", "HTTPS/JSON")
+Rel(api_controller, mqtt_adapter, "Обработка MQTT", "Internal")
+Rel(api_controller, vendor_adapter, "Обработка API вендоров", "Internal")
+Rel(api_controller, protocol_component, "Трансформация данных", "Internal")
+Rel(mqtt_adapter, vendor_db, "SQL", "Read/Write")
+Rel(vendor_adapter, vendor_db, "SQL", "Read/Write")
+Rel(protocol_component, vendor_db, "SQL", "Read/Write")
+
+@enduml

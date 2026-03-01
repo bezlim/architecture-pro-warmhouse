@@ -53,8 +53,7 @@
 
 [AS-IS контекстная диаграмма](schemas/Context.puml)
 
-
-<img src="schemas/as-is_context.png">
+![Контекстная диаграмма As-IS](assets/images/as-is_context.png)
 
 # Задание 2. Проектирование микросервисной архитектуры
 
@@ -65,31 +64,56 @@
 [Диаграмма контейнеров](schemas/Container.puml)
 
 
-![Диаграмма контейнеров](schemas/c4_container.png)
+![Диаграмма контейнеров](assets/images/c4_container.png)
 
 **Диаграмма компонентов (Components)**
 
+## Account and Billing service
+
 [Диаграмма компонентов Account/Billing](schemas/c4_account_billing_component.puml)
 
-![Диаграмма компонентов Account/Billing](с4_account_billing_component.png)
+![Диаграмма компонентов Account/Billing](assets/images/c4_account_billing_component.png)
+
+## Core service
+
+[Диаграмма компонентов Core](schemas/c4_core_component.puml)
+
+![Диаграмма компонентов Core](assets/images/c4_core_component.png)
+
+## Vendor integration service
+
+[Диаграмма компонентов Vendor integration](schemas/c4_vendor_integration_component.puml)
+
+![Диаграмма компонентов Vendor integration](assets/images/c4_vendor_integration_component.png)
 
 **Диаграмма кода (Code)**
 
-Добавьте одну диаграмму или несколько.
+[Диаграмма последовательности Core](schemas/c4_core_sequence.puml)
+
+![Диаграмма компонентов Vendor integration](assets/images/c4_core_sequence.png)
+
 
 # Задание 3. Разработка ER-диаграммы
 
-Добавьте сюда ER-диаграмму. Она должна отражать ключевые сущности системы, их атрибуты и тип связей между ними.
+[Диаграмма сущность связь](schemas/er.puml)
+
+![Диаграмма сущность связь](assets/images/er.png)
 
 # Задание 4. Создание и документирование API
 
 ### 1. Тип API
 
-Укажите, какой тип API вы будете использовать для взаимодействия микросервисов. Объясните своё решение.
-
+Для взаимодействия между сервисами будем использовать REST API.
+Приимущества REST API:
+- Легко искать проблемы, так как данные передаются в JSON
+- Легко тестировать
+- Поддержка в любых ЯП
+- Простая и быстрая реализация, за счёт готовых фреймворков
+Есть недостатки в виде больших размеров пакетов для тех же самых данных. Но на данном этапе, для нас это не критично. 
+Пока не используем событийную архитектура, чтоб не усложнять запуск проекта.
 ### 2. Документация API
 
-Здесь приложите ссылки на документацию API для микросервисов, которые вы спроектировали в первой части проектной работы. Для документирования используйте Swagger/OpenAPI или AsyncAPI.
+[OpenAPI документация](openapi.yml)
 
 # Задание 5. Работа с docker и docker-compose
 

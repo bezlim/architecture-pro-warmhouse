@@ -1,0 +1,110 @@
+@startuml c4_core_clean_architecture
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Clean Architecture Diagram - Smart Home Core Service
+
+' Настройки для лучшего расположения
+skinparam nodesep 40
+skinparam ranksep 40
+
+' Явное направление сверху вниз
+top to bottom direction
+
+' === СЛОЙ 1: ENTERPRISE BUSINESS RULES (Entities) ===
+Boundary(entities_layer, "📦 Entities Layer", "#E8F4F8") {
+    Component(device_entity, "Device Entity", "Domain Model", "ID, Type, Status, Location")
+    Component(telemetry_entity, "Telemetry Entity", "Domain Model", "DeviceID, Metric, Value, Timestamp")
+    Component(command_entity, "Command Entity", "Domain Model", "ID, DeviceID, Action, Status")
+    Component(user_limits_entity, "UserLimits Entity", "Domain Model", "UserID, MaxDevices, MaxStorage")
+}
+
+' === СЛОЙ 2: APPLICATION BUSINESS RULES (Use Cases) ===
+Boundary(usecases_layer, "⚙️ Use Cases Layer", "#F0E8F8") {
+    Component(device_uc, "Device Use Cases", "Application Logic", "CreateDevice, UpdateDevice, DeleteDevice")
+    Component(telemetry_uc, "Telemetry Use Cases", "Application Logic", "ReceiveTelemetry, GetTelemetryHistory")
+    Component(command_uc, "Command Use Cases", "Application Logic", "SendCommand, GetCommandStatus")
+    Component(limits_uc, "Limits Use Cases", "Application Logic", "CheckLimits, UpdateLimits")
+}
+
+' === СЛОЙ 3: INTERFACE ADAPTERS ===
+Boundary(adapters_layer, "🔌 Interface Adapters Layer", "#F8F0E8") {
+    Component(api_controller, "API Controller", "REST/WebSocket", "HTTP Handlers, WebSocket Handlers")
+    Component(device_presenter, "Device Presenter", "DTO Mapper", "Entity ↔ DTO conversion")
+    Component(telemetry_presenter, "Telemetry Presenter", "DTO Mapper", "Entity ↔ DTO conversion")
+    Component(command_presenter, "Command Presenter", "DTO Mapper", "Entity ↔ DTO conversion")
+}
+
+' === СЛОЙ 4: FRAMEWORKS & DRIVERS (Infrastructure) ===
+Boundary(infrastructure_layer, "🖥️ Infrastructure Layer", "#E8F8E8") {
+    ComponentDb(core_db, "Core Database", "PostgreSQL + TimescaleDB", "Devices, Telemetry, Commands")
+    Component(core_repository, "Repository Implementations", "Data Access", "DeviceRepository, TelemetryRepository, CommandRepository")
+    Component(external_api, "External API Clients", "HTTP/gRPC Clients", "Core API Client, Account API Client")
+    Component(event_publisher, "Event Publisher", "Message Queue", "RabbitMQ/Kafka Producer")
+}
+
+' === ВНЕШНИЕ СИСТЕМЫ ===
+System_Ext(core_external, "Smart Home Core API", "Внешний интерфейс", "Public API для клиентов")
+System_Ext(vendor_service, "Vendor Integration Service", "Внутренний сервис", "Телеметрия и команды")
+System_Ext(account_service, "Account & Billing Service", "Внутренний сервис", "Лимиты и подписки")
+System_Ext(mobile_app, "Mobile Application", "iOS/Android", "Приложение пользователя")
+System_Ext(web_app, "Web Application", "HTML/JS", "Личный кабинет")
+
+' === СКРЫТЫЕ СВЯЗИ ДЛЯ ПОЗИЦИОНИРОВАНИЯ ===
+entities_layer -[hidden]-> usecases_layer
+usecases_layer -[hidden]-> adapters_layer
+adapters_layer -[hidden]-> infrastructure_layer
+infrastructure_layer -[hidden]-> core_external
+
+' === СВЯЗИ МЕЖДУ СЛОЯМИ (Dependency Rule) ===
+' Внешние системы → Interface Adapters
+Rel(mobile_app, api_controller, "HTTPS/WSS", "Requests")
+Rel(web_app, api_controller, "HTTPS/WSS", "Requests")
+Rel(vendor_service, api_controller, "gRPC/HTTPS", "Telemetry/Commands")
+Rel(account_service, api_controller, "HTTPS/JSON", "Events/Limits")
+
+' Interface Adapters → Use Cases
+Rel(api_controller, device_uc, "Вызов", "Internal")
+Rel(api_controller, telemetry_uc, "Вызов", "Internal")
+Rel(api_controller, command_uc, "Вызов", "Internal")
+Rel(api_controller, limits_uc, "Вызов", "Internal")
+
+Rel(device_presenter, device_uc, "Вызов", "Internal")
+Rel(telemetry_presenter, telemetry_uc, "Вызов", "Internal")
+Rel(command_presenter, command_uc, "Вызов", "Internal")
+
+' Use Cases → Entities
+Rel(device_uc, device_entity, "Использует", "Domain Model")
+Rel(telemetry_uc, telemetry_entity, "Использует", "Domain Model")
+Rel(command_uc, command_entity, "Использует", "Domain Model")
+Rel(limits_uc, user_limits_entity, "Использует", "Domain Model")
+
+' Use Cases → Interface Adapters (Presenters)
+Rel(device_uc, device_presenter, "Возвращает", "DTO")
+Rel(telemetry_uc, telemetry_presenter, "Возвращает", "DTO")
+Rel(command_uc, command_presenter, "Возвращает", "DTO")
+
+' Use Cases → Infrastructure (Repositories)
+Rel(device_uc, core_repository, "Использует", "Interface")
+Rel(telemetry_uc, core_repository, "Использует", "Interface")
+Rel(command_uc, core_repository, "Использует", "Interface")
+Rel(limits_uc, core_repository, "Использует", "Interface")
+
+' Infrastructure → Database
+Rel(core_repository, core_db, "SQL", "Read/Write")
+
+' Infrastructure → External Services
+Rel(core_repository, external_api, "gRPC/HTTPS", "Calls")
+Rel(event_publisher, account_service, "Async Events", "RabbitMQ/Kafka")
+Rel(external_api, vendor_service, "gRPC/HTTPS", "Commands")
+Rel(external_api, account_service, "HTTPS/JSON", "Limit Checks")
+
+' Interface Adapters → External Systems
+Rel(api_controller, core_external, "Публикует", "OpenAPI")
+
+' === ПРИМЕЧАНИЯ ===
+Note Right of entities_layer : 📌 Enterprise Business Rules\n- Независимы от фреймворков\n- Без зависимостей от других слоёв\n- Чистая бизнес-логика
+Note Right of usecases_layer : ⚙️ Application Business Rules\n- Координируют поток данных\n- Вызывают Entities и Repositories\n- Не зависят от UI/DB
+Note Right of adapters_layer : 🔌 Interface Adapters\n- Конвертируют данные\n- Controllers, Presenters, Gateways\n- Зависят от Use Cases
+Note Right of infrastructure_layer : 🖥️ Frameworks & Drivers\n- Базы данных, фреймворки, внешние API\n- Детали реализации\n- Зависят от всех слоёв
+
+@enduml

@@ -1,0 +1,191 @@
+@startuml c4_core_add_device_sequence
+title Sequence Diagram - Add New Device to Smart Home Core (Vendor Device Selection)
+
+skinparam sequenceMessageAlign center
+skinparam participantStyle rectangle
+skinparam nodesep 30
+skinparam ranksep 30
+
+autonumber
+
+' ============================================
+' PARTICIPANTS
+' ============================================
+participant "📱 Mobile/Web App" as App
+participant "🔌 API Controller" as Controller
+participant "⚙️ GetVendorDevicesUseCase" as GetDevicesUC
+participant "⚙️ CreateDeviceUseCase" as CreateUC
+participant "⚙️ CheckLimitsUseCase" as LimitsUC
+participant "🖥️ DeviceRepository" as DeviceRepo
+participant "🖥️ VendorAccountRepository" as VendorAccountRepo
+participant "🗄️ Core Database" as DB
+participant "💳 Account & Billing Service" as AccountSvc
+participant "🔗 Vendor Integration Service" as VendorSvc
+participant "☁️ Vendor Cloud API" as VendorCloud
+
+' ============================================
+' PHASE 1: GET AVAILABLE DEVICES FROM VENDOR
+' ============================================
+
+group Phase 1: Get Available Devices from Vendor
+
+== 1. User Requests Vendor Devices ==
+
+App -> Controller: GET /api/v1/vendors/{vendorAccountId}/devices
+activate App
+activate Controller
+
+Controller -> Controller: Validate JWT Token
+Controller -> GetDevicesUC: execute(userId, vendorAccountId)
+activate GetDevicesUC
+
+GetDevicesUC -> VendorAccountRepo: findByUserIdAndId(userId, vendorAccountId)
+activate VendorAccountRepo
+
+VendorAccountRepo -> DB: SELECT * FROM vendor_accounts\nWHERE user_id = ? AND id = ?
+activate DB
+
+DB --> VendorAccountRepo: VendorAccount\n{accessToken, refreshToken, vendorUserId}
+deactivate DB
+
+VendorAccountRepo --> GetDevicesUC: VendorAccount entity
+deactivate VendorAccountRepo
+
+GetDevicesUC -> VendorSvc: GET /api/v1/internal/vendors/{vendorId}/devices\n{accessToken, vendorUserId}
+activate VendorSvc
+
+VendorSvc -> VendorSvc: Validate OAuth token
+VendorSvc -> VendorCloud: GET /api/devices\nAuthorization: Bearer {accessToken}
+activate VendorCloud
+
+VendorCloud -> VendorCloud: Query devices for user
+VendorCloud --> VendorSvc: List<VendorDevice>\n{vendorDeviceId, type, name, model, online}
+deactivate VendorCloud
+
+VendorSvc --> GetDevicesUC: List<VendorDeviceDTO>
+deactivate VendorSvc
+
+GetDevicesUC --> Controller: List<VendorDeviceDTO>
+deactivate GetDevicesUC
+
+Controller --> App: 200 OK\n[\n  {vendorDeviceId: "xiaomi_123", type: "LIGHT", \n   name: "Smart Bulb", model: "MJDP02YL", online: true},\n  {vendorDeviceId: "xiaomi_456", type: "SENSOR", \n   name: "Motion Sensor", model: "RTCGQ11LM", online: true}\n]
+deactivate Controller
+deactivate App
+
+end
+
+' ============================================
+' PHASE 2: SELECT AND ADD DEVICE
+' ============================================
+
+group Phase 2: Select and Add Device to Smart Home
+
+== 2. User Selects Device to Add ==
+
+App -> Controller: POST /api/v1/devices\n{vendorAccountId, vendorDeviceId, name, location}
+activate App
+activate Controller
+
+Controller -> Controller: Validate JWT Token
+Controller -> Controller: Parse Request Body
+Controller -> CreateUC: execute(userId, vendorAccountId, vendorDeviceId, name, location)
+activate CreateUC
+
+== 3. Check User Limits ==
+
+CreateUC -> LimitsUC: checkDeviceLimit(userId)
+activate LimitsUC
+
+LimitsUC -> AccountSvc: GET /api/v1/internal/limits/{userId}
+activate AccountSvc
+
+AccountSvc -> AccountSvc: Get limits from subscription
+AccountSvc --> LimitsUC: UserLimits\n{maxDevices, maxStorage, ...}
+deactivate AccountSvc
+
+LimitsUC -> DeviceRepo: countByUserId(userId)
+activate DeviceRepo
+
+DeviceRepo -> DB: SELECT COUNT(*) FROM devices\nWHERE user_id = ?
+activate DB
+
+DB --> DeviceRepo: deviceCount
+deactivate DB
+
+DeviceRepo --> LimitsUC: Integer count
+deactivate DeviceRepo
+
+LimitsUC -> LimitsUC: currentCount < maxDevices
+alt Limit Exceeded
+    LimitsUC --> CreateUC: LimitExceededError
+    deactivate LimitsUC
+    
+    CreateUC --> Controller: Throw LimitExceededError
+    deactivate CreateUC
+    
+    Controller -> Controller: Handle Error
+    Controller --> App: 403 Forbidden\n{error: "limit_exceeded"}
+    deactivate Controller
+    deactivate App
+else Limit OK
+    LimitsUC --> CreateUC: true (limit OK)
+    deactivate LimitsUC
+    
+    == 4. Verify Device with Vendor ==
+    
+    CreateUC -> VendorAccountRepo: findByUserIdAndId(userId, vendorAccountId)
+    activate VendorAccountRepo
+    
+    VendorAccountRepo -> DB: SELECT * FROM vendor_accounts\nWHERE user_id = ? AND id = ?
+    activate DB
+    
+    DB --> VendorAccountRepo: VendorAccount\n{accessToken, refreshToken, vendorUserId}
+    deactivate DB
+    
+    VendorAccountRepo --> CreateUC: VendorAccount entity
+    deactivate VendorAccountRepo
+    
+    CreateUC -> VendorSvc: GET /api/v1/internal/vendors/{vendorId}/devices/{vendorDeviceId}\n{accessToken}
+    activate VendorSvc
+    
+    VendorSvc -> VendorCloud: GET /api/devices/{vendorDeviceId}\nAuthorization: Bearer {accessToken}
+    activate VendorCloud
+    
+    VendorCloud -> VendorCloud: Verify device exists and is accessible
+    VendorCloud --> VendorSvc: {vendorDeviceId, type, model, status: "online"}
+    deactivate VendorCloud
+    
+    VendorSvc --> CreateUC: VendorDeviceDTO
+    deactivate VendorSvc
+    
+    == 5. Create Device Entity ==
+    
+    CreateUC -> CreateUC: Device.create(\n  userId, vendorAccountId, vendorDeviceId, type, name, location\n)
+    
+    CreateUC -> DeviceRepo: save(device)
+    activate DeviceRepo
+    
+    DeviceRepo -> DB: INSERT INTO devices\nVALUES (id, user_id, vendor_account_id, vendor_device_id, \ntype, name, location, status, created_at)
+    activate DB
+    
+    DB --> DeviceRepo: Device with ID
+    deactivate DB
+    
+    DeviceRepo --> CreateUC: Device entity
+    deactivate DeviceRepo
+    
+    == 6. Return Response ==
+    
+    CreateUC -> CreateUC: Map Device to DeviceDTO
+    CreateUC --> Controller: Device entity
+    deactivate CreateUC
+    
+    Controller -> Controller: Map to HttpResponse
+    Controller --> App: 201 Created\n{\n  "id": "uuid",\n  "vendorAccountId": "vendor_acc_123",\n  "vendorDeviceId": "xiaomi_123",\n  "type": "LIGHT",\n  "name": "Living Room Light",\n  "location": "Living Room",\n  "status": "ONLINE",\n  "createdAt": "2024-01-15T10:30:00Z"\n}
+    deactivate Controller
+    deactivate App
+end
+
+end
+
+@enduml
