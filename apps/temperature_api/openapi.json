@@ -1,0 +1,165 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Temperature API",
+    "version": "1.0.0",
+    "description": "Temperature sensor data API with random temperature generation"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8081"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "description": "Returns the health status of the API",
+        "tags": ["health"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/temperature": {
+      "get": {
+        "summary": "Get temperature data",
+        "description": "Returns random temperature data for a given location or sensor ID",
+        "tags": ["temperature"],
+        "parameters": [
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Location name (Living Room, Bedroom, Kitchen)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["Living Room", "Bedroom", "Kitchen"]
+            }
+          },
+          {
+            "name": "sensorId",
+            "in": "query",
+            "description": "Sensor ID (1=Living Room, 2=Bedroom, 3=Kitchen)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["1", "2", "3"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemperatureResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/temperature/{id}": {
+      "get": {
+        "summary": "Get temperature by sensor ID",
+        "description": "Returns random temperature data for a specific sensor ID",
+        "tags": ["temperature"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Sensor ID (1=Living Room, 2=Bedroom, 3=Kitchen)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemperatureResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TemperatureResponse": {
+        "type": "object",
+        "description": "Temperature reading response from sensor",
+        "properties": {
+          "value": {
+            "type": "number",
+            "description": "Temperature value (random between 18.0 and 28.0)",
+            "example": 23.5
+          },
+          "unit": {
+            "type": "string",
+            "description": "Temperature unit",
+            "example": "celsius"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of the reading"
+          },
+          "location": {
+            "type": "string",
+            "description": "Location name",
+            "example": "Living Room"
+          },
+          "status": {
+            "type": "string",
+            "description": "Sensor status",
+            "example": "active"
+          },
+          "sensor_id": {
+            "type": "string",
+            "description": "Sensor identifier",
+            "example": "1"
+          },
+          "sensor_type": {
+            "type": "string",
+            "description": "Type of sensor",
+            "example": "temperature"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the reading"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "description": "Health check response",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Health status",
+            "example": "ok"
+          }
+        }
+      }
+    }
+  }
+}
