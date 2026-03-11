@@ -1,0 +1,629 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Core Service API",
+    "description": "Device registry and sensor management service - microservice extracted from smart_home monolith",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Smart Home Team"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8084",
+      "description": "Core Service direct access"
+    },
+    {
+      "url": "http://localhost:8000/api/core",
+      "description": "Core Service via API Gateway"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Devices",
+      "description": "Device registry operations"
+    },
+    {
+      "name": "Sensors",
+      "description": "Sensor management operations"
+    },
+    {
+      "name": "Monitoring",
+      "description": "Device monitoring and health"
+    },
+    {
+      "name": "Monolith",
+      "description": "Backward compatibility with smart_home monolith"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Monitoring"],
+        "summary": "Health check",
+        "description": "Check if the core service is running",
+        "operationId": "healthCheck",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices": {
+      "get": {
+        "tags": ["Devices"],
+        "summary": "Get all devices",
+        "description": "Retrieve all registered devices from core service registry",
+        "operationId": "getAllDevices",
+        "responses": {
+          "200": {
+            "description": "List of devices",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Device"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Devices"],
+        "summary": "Register a new device",
+        "description": "Register a new device in core service and optionally in monolith",
+        "operationId": "registerDevice",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Device registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/{id}": {
+      "get": {
+        "tags": ["Devices"],
+        "summary": "Get device by ID",
+        "description": "Retrieve a specific device by ID",
+        "operationId": "getDeviceById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Device ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Device details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Device not found"
+          }
+        }
+      },
+      "put": {
+        "tags": ["Devices"],
+        "summary": "Update device",
+        "description": "Update device information",
+        "operationId": "updateDevice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Device ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Device updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Devices"],
+        "summary": "Delete device",
+        "description": "Delete a device from registry",
+        "operationId": "deleteDevice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Device ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Device deleted successfully"
+          },
+          "404": {
+            "description": "Device not found"
+          }
+        }
+      }
+    },
+    "/devices/{id}/status": {
+      "put": {
+        "tags": ["Sensors"],
+        "summary": "Update device status",
+        "description": "Update device status and metadata",
+        "operationId": "updateDeviceStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Device ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceStatus"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/{id}/commands": {
+      "get": {
+        "tags": ["Sensors"],
+        "summary": "Get device commands",
+        "description": "Get command history for a device",
+        "operationId": "getDeviceCommands",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Device ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of commands",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Command"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Sensors"],
+        "summary": "Send command to device",
+        "description": "Send a command to a device",
+        "operationId": "sendDeviceCommand",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Device ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Command"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Command sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Command"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/monitoring/devices": {
+      "get": {
+        "tags": ["Monitoring"],
+        "summary": "Get device monitoring stats",
+        "description": "Get statistics about all devices",
+        "operationId": "getMonitoringStats",
+        "responses": {
+          "200": {
+            "description": "Monitoring statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonitoringStats"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/monolith/sensors": {
+      "get": {
+        "tags": ["Monolith"],
+        "summary": "Get sensors from monolith",
+        "description": "Proxy request to smart_home monolith for backward compatibility",
+        "operationId": "getMonolithSensors",
+        "responses": {
+          "200": {
+            "description": "List of sensors from monolith",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Sensor"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Monolith unavailable"
+          }
+        }
+      }
+    },
+    "/monolith/sensors/{id}": {
+      "get": {
+        "tags": ["Monolith"],
+        "summary": "Get sensor from monolith by ID",
+        "description": "Proxy request to smart_home monolith for backward compatibility",
+        "operationId": "getMonolithSensor",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Sensor ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sensor details from monolith",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sensor"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sensor not found in monolith"
+          },
+          "503": {
+            "description": "Monolith unavailable"
+          }
+        }
+      }
+    },
+    "/monolith/health": {
+      "get": {
+        "tags": ["Monolith"],
+        "summary": "Get monolith health status",
+        "description": "Check smart_home monolith health status",
+        "operationId": "getMonolithHealth",
+        "responses": {
+          "200": {
+            "description": "Monolith health status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Monolith unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "service": {
+            "type": "string",
+            "example": "core-service"
+          }
+        }
+      },
+      "Device": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "dev_001"
+          },
+          "name": {
+            "type": "string",
+            "example": "Living Room Light"
+          },
+          "type": {
+            "type": "string",
+            "example": "smart_bulb"
+          },
+          "vendor": {
+            "type": "string",
+            "example": "Tuya"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["online", "offline", "error"],
+            "example": "online"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "brightness": 80,
+              "color": "warm_white"
+            }
+          },
+          "last_seen": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DeviceCreate": {
+        "type": "object",
+        "required": ["name", "type", "vendor"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Living Room Light"
+          },
+          "type": {
+            "type": "string",
+            "example": "smart_bulb"
+          },
+          "vendor": {
+            "type": "string",
+            "example": "Tuya"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "sync_to_monolith": {
+            "type": "boolean",
+            "default": true,
+            "description": "Also create device in smart_home monolith for backward compatibility"
+          }
+        }
+      },
+      "DeviceUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "vendor": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "DeviceStatus": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["online", "offline", "error"]
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "Command": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "example": "turn_on"
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "brightness": 100
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MonitoringStats": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "example": 10
+          },
+          "online": {
+            "type": "integer",
+            "example": 8
+          },
+          "offline": {
+            "type": "integer",
+            "example": 2
+          },
+          "error": {
+            "type": "integer",
+            "example": 0
+          }
+        }
+      },
+      "Sensor": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "Living Room Temperature"
+          },
+          "type": {
+            "type": "string",
+            "example": "temperature"
+          },
+          "location": {
+            "type": "string",
+            "example": "Living Room"
+          },
+          "value": {
+            "type": "number",
+            "example": 22.5
+          },
+          "unit": {
+            "type": "string",
+            "example": "celsius"
+          },
+          "status": {
+            "type": "string",
+            "example": "active"
+          },
+          "last_updated": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}

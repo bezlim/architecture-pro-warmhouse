@@ -1,0 +1,567 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Integration Service API",
+    "description": "Device integration service - handles communication with smart devices with OPEN LOCAL APIs (Shelly, Tasmota, ESPHome, Sonoff LAN)",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Smart Home Team"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8085",
+      "description": "Integration Service direct access"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Integrations",
+      "description": "Vendor integration management"
+    },
+    {
+      "name": "Devices",
+      "description": "Device discovery and management"
+    },
+    {
+      "name": "Commands",
+      "description": "Device command execution"
+    },
+    {
+      "name": "Status",
+      "description": "Device status queries"
+    },
+    {
+      "name": "Vendors",
+      "description": "Supported vendor information"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Status"],
+        "summary": "Health check",
+        "description": "Check if the integration service is running",
+        "operationId": "healthCheck",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/integrations": {
+      "get": {
+        "tags": ["Integrations"],
+        "summary": "Get all integrations",
+        "description": "Retrieve all configured vendor integrations",
+        "operationId": "getAllIntegrations",
+        "responses": {
+          "200": {
+            "description": "List of integrations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Integration"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Integrations"],
+        "summary": "Create new integration",
+        "description": "Configure a new vendor integration",
+        "operationId": "createIntegration",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntegrationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Integration created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Integration"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/integrations/{integration_id}": {
+      "get": {
+        "tags": ["Integrations"],
+        "summary": "Get integration by ID",
+        "description": "Retrieve specific integration details",
+        "operationId": "getIntegrationById",
+        "parameters": [
+          {
+            "name": "integration_id",
+            "in": "path",
+            "required": true,
+            "description": "Integration ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Integration details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Integration"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Integration not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Integrations"],
+        "summary": "Delete integration",
+        "description": "Remove a vendor integration",
+        "operationId": "deleteIntegration",
+        "parameters": [
+          {
+            "name": "integration_id",
+            "in": "path",
+            "required": true,
+            "description": "Integration ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Integration deleted successfully"
+          },
+          "404": {
+            "description": "Integration not found"
+          }
+        }
+      }
+    },
+    "/integrations/{integration_id}/devices": {
+      "get": {
+        "tags": ["Devices"],
+        "summary": "Get devices for integration",
+        "description": "Discover devices from a specific integration",
+        "operationId": "getIntegrationDevices",
+        "parameters": [
+          {
+            "name": "integration_id",
+            "in": "path",
+            "required": true,
+            "description": "Integration ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of devices",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExternalDevice"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/{device_id}/status": {
+      "get": {
+        "tags": ["Status"],
+        "summary": "Get device status",
+        "description": "Get current status of an external device",
+        "operationId": "getDeviceStatus",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "description": "External device ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Device status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Device not found"
+          }
+        }
+      }
+    },
+    "/devices/{device_id}/command": {
+      "post": {
+        "tags": ["Commands"],
+        "summary": "Send command to device",
+        "description": "Execute a command on an external device",
+        "operationId": "sendDeviceCommand",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "description": "External device ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Command executed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid command"
+          },
+          "404": {
+            "description": "Device not found"
+          }
+        }
+      }
+    },
+    "/vendors": {
+      "get": {
+        "tags": ["Vendors"],
+        "summary": "Get supported vendors",
+        "description": "List all supported vendor types",
+        "operationId": "getSupportedVendors",
+        "responses": {
+          "200": {
+            "description": "List of supported vendors",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VendorInfo"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vendors/{vendor}/capabilities": {
+      "get": {
+        "tags": ["Vendors"],
+        "summary": "Get vendor capabilities",
+        "description": "Get supported device types and commands for a vendor",
+        "operationId": "getVendorCapabilities",
+        "parameters": [
+          {
+            "name": "vendor",
+            "in": "path",
+            "required": true,
+            "description": "Vendor name",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vendor capabilities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorCapabilities"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "service": {
+            "type": "string",
+            "example": "integration-service"
+          }
+        }
+      },
+      "Integration": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "int_tuya_001"
+          },
+          "name": {
+            "type": "string",
+            "example": "Home Tuya Account"
+          },
+          "vendor": {
+            "type": "string",
+            "enum": ["shelly", "tasmota", "esphome", "mock"],
+            "example": "shelly"
+          },
+          "api_endpoint": {
+            "type": "string",
+            "example": "https://apigw.tuyaeu.com"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "inactive", "error"],
+            "example": "active"
+          },
+          "config": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "client_id": "xxx",
+              "region": "eu"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "IntegrationCreate": {
+        "type": "object",
+        "required": ["name", "vendor"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Home Tuya Account"
+          },
+          "vendor": {
+            "type": "string",
+            "enum": ["shelly", "tasmota", "esphome", "mock"],
+            "example": "shelly"
+          },
+          "api_endpoint": {
+            "type": "string",
+            "example": "https://apigw.tuyaeu.com"
+          },
+          "config": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "ExternalDevice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "tuya_dev_12345"
+          },
+          "integration_id": {
+            "type": "string",
+            "example": "int_tuya_001"
+          },
+          "name": {
+            "type": "string",
+            "example": "Living Room Light"
+          },
+          "type": {
+            "type": "string",
+            "example": "smart_bulb"
+          },
+          "vendor": {
+            "type": "string",
+            "example": "tuya"
+          },
+          "model": {
+            "type": "string",
+            "example": "LS01"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["on_off", "brightness", "color"]
+          }
+        }
+      },
+      "DeviceStatus": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "example": "tuya_dev_12345"
+          },
+          "online": {
+            "type": "boolean",
+            "example": true
+          },
+          "state": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "power": true,
+              "brightness": 80,
+              "color_temperature": 3000
+            }
+          },
+          "last_seen": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DeviceCommand": {
+        "type": "object",
+        "required": ["command"],
+        "properties": {
+          "command": {
+            "type": "string",
+            "example": "turn_on"
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "brightness": 100
+            }
+          }
+        }
+      },
+      "CommandResult": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "device_id": {
+            "type": "string",
+            "example": "tuya_dev_12345"
+          },
+          "command": {
+            "type": "string",
+            "example": "turn_on"
+          },
+          "message": {
+            "type": "string",
+            "example": "Command executed successfully"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "VendorInfo": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "tuya"
+          },
+          "display_name": {
+            "type": "string",
+            "example": "Tuya Smart"
+          },
+          "description": {
+            "type": "string",
+            "example": "Tuya Smart Home Platform"
+          },
+          "supported": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "VendorCapabilities": {
+        "type": "object",
+        "properties": {
+          "vendor": {
+            "type": "string",
+            "example": "tuya"
+          },
+          "device_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["smart_bulb", "smart_plug", "smart_switch", "temperature_sensor"]
+          },
+          "commands": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["turn_on", "turn_off", "set_brightness", "set_color"]
+          }
+        }
+      }
+    }
+  }
+}

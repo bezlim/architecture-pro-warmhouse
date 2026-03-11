@@ -33,6 +33,56 @@ services:
     networks:
       - smarthome-network
 
+  # Core Service - Device registry and sensor management (microservice)
+  core-service:
+    build:
+      context: ./core-service
+      dockerfile: Dockerfile
+    container_name: smarthome-core-service
+    depends_on:
+      - app
+      - integration-service
+    ports:
+      - "8084:8084"
+    environment:
+      - MONOLITH_URL=http://app:8080
+      - INTEGRATION_SERVICE_URL=http://integration-service:8085
+    restart: unless-stopped
+    networks:
+      - smarthome-network
+
+  # Integration Service - Vendor integrations (Tuya, Xiaomi, Aqara, Shelly, etc.)
+  integration-service:
+    build:
+      context: ./integration-service
+      dockerfile: Dockerfile
+    container_name: smarthome-integration-service
+    depends_on:
+      - app
+    ports:
+      - "8085:8085"
+    environment:
+      - CORE_SERVICE_URL=http://core-service:8084
+    restart: unless-stopped
+    networks:
+      - smarthome-network
+
+  # User Registry & Billing Service - User management and billing
+  user-registry-service:
+    build:
+      context: ./user-registry-service
+      dockerfile: Dockerfile
+    container_name: smarthome-user-registry-service
+    depends_on:
+      - core-service
+    ports:
+      - "8086:8086"
+    environment:
+      - CORE_SERVICE_URL=http://core-service:8084
+    restart: unless-stopped
+    networks:
+      - smarthome-network
+
   app:
     build:
       context: ./smart_home
