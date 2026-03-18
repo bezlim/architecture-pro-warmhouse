@@ -1,0 +1,127 @@
+@startuml core_classes
+
+title Core Service - Domain Classes (DDD)
+
+' ===========================================
+' Domain Entities
+' ===========================================
+
+class Device {
+    +ID: string
+    +Name: string
+    +Type: string
+    +Vendor: string
+    +Status: string
+    +Metadata: map[string]interface{}
+    +LastSeen: time.Time
+    +CreatedAt: time.Time
+}
+
+class Command {
+    +Command: string
+    +Params: map[string]interface{}
+    +Timestamp: time.Time
+}
+
+class Sensor {
+    +ID: int
+    +Name: string
+    +Type: string
+    +Location: string
+    +Value: float64
+    +Unit: string
+    +Status: string
+    +LastUpdated: time.Time
+    +CreatedAt: time.Time
+}
+
+class Integration {
+    +ID: string
+    +Name: string
+    +Vendor: string
+    +DeviceIP: string
+    +Status: string
+    +Config: map[string]interface{}
+    +CreatedAt: string
+}
+
+class IntegrationDevice {
+    +ID: string
+    +IntegrationID: string
+    +Name: string
+    +Type: string
+    +Vendor: string
+    +Model: string
+    +Capabilities: []string
+}
+
+' ===========================================
+' Domain Services / Aggregates
+' ===========================================
+
+class DeviceRegistry {
+    -devices: map[string]*Device
+    -commands: map[string][]Command
+    +Create(device): Device
+    +GetAll(): []Device
+    +GetByID(id): (*Device, bool)
+    +Update(id, update): (*Device, bool)
+    +UpdateStatus(id, status): (*Device, bool)
+    +Delete(id): bool
+    +SendCommand(id, cmd): bool
+    +GetCommands(id): []Command
+    +GetStats(): MonitoringStats
+}
+
+class IntegrationServiceClient {
+    -baseURL: string
+    -client: http.Client
+    +CreateIntegration(integration): Integration
+    +GetIntegrationDevices(integrationID): []IntegrationDevice
+    +GetDeviceStatus(deviceID): IntegrationStatus
+    +SendCommand(deviceID, cmd): CommandResult
+}
+
+' ===========================================
+' Value Objects
+' ===========================================
+
+class MonitoringStats {
+    +Total: int
+    +Online: int
+    +Offline: int
+    +Error: int
+}
+
+class IntegrationStatus {
+    +DeviceID: string
+    +Online: bool
+    +State: map[string]interface{}
+    +LastSeen: time.Time
+}
+
+class CommandResult {
+    +Success: bool
+    +DeviceID: string
+    +Command: string
+    +Message: string
+    +Timestamp: time.Time
+}
+
+' ===========================================
+' Relationships
+' ===========================================
+
+DeviceRegistry "1" *-- "0..*" Device : aggregate
+DeviceRegistry "1" *-- "0..*" Command : manages
+DeviceRegistry .. MonitoringStats : returns
+
+IntegrationServiceClient .. Integration : creates
+IntegrationServiceClient .. IntegrationDevice : returns
+IntegrationServiceClient .. IntegrationStatus : returns
+IntegrationServiceClient .. CommandResult : returns
+
+Device .. Command : receives
+Sensor .. Device : converts to
+
+@enduml
