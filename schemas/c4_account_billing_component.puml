@@ -1,0 +1,38 @@
+@startuml c4_account_component
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C4 Component Diagram - Account & Billing Service
+
+top to bottom direction
+
+Container_Boundary(account_container, "Account & Billing Service", "Python/Node.js") {
+    
+    Component(api_controller, "API Controller", "REST API", "Обработка HTTP запросов, WebSocket, Webhooks")
+    
+    Component(profile_component, "Profile & House Component", "Business Logic", "Профиль, настройки, привязка к домам")
+    
+    Component(subscription_component, "Subscription & Limits Component", "Business Logic", "Тарифы, подписки, лимиты, квоты")
+    
+    Component(payment_component, "Payment & Webhook Component", "Business Logic", "Платежи, инвойсы, вебхуки от шлюза")
+    
+    ComponentDb(account_db, "Account Database", "PostgreSQL", "Профили, подписки, транзакции")
+}
+
+System_Ext(identity_provider, "Identity Provider", "Аутентификация, JWT")
+System_Ext(payment_gateway, "Платежный Шлюз", "Обработка платежей")
+System_Ext(core_service, "Smart Home Core Service", "Устройства, телеметрия")
+System_Ext(notification_service, "Notification Service", "Email, SMS, Push уведомления")
+
+Rel(api_controller, identity_provider, "Валидация JWT", "HTTPS/JWKS")
+Rel(payment_gateway, api_controller, "Вебхуки платежей", "HTTPS/JSON")
+Rel(api_controller, notification_service, "Отправка уведомлений", "HTTPS/API")
+Rel(core_service, api_controller, "События подписки", "HTTPS/JSON")
+Rel(api_controller, core_service, "Проверка лимитов", "HTTPS/JSON")
+Rel(api_controller, profile_component, "CRUD профиля и домов", "Internal")
+Rel(api_controller, subscription_component, "Подписка и лимиты", "Internal")
+Rel(api_controller, payment_component, "Платежи и вебхуки", "Internal")
+Rel(profile_component, account_db, "SQL", "Read/Write")
+Rel(subscription_component, account_db, "SQL", "Read/Write")
+Rel(payment_component, account_db, "SQL", "Read/Write")
+
+@enduml

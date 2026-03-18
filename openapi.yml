@@ -1,0 +1,797 @@
+openapi: 3.0.3
+info:
+  title: Smart Home Core Service API
+  description: |
+    API для управления устройствами умного дома, телеметрией и командами.
+    
+    ## Аутентификация
+    Все запросы требуют JWT-токен в заголовке `Authorization: Bearer <token>`.
+    
+    ## Лимиты
+    - Rate limiting: 100 запросов в минуту на пользователя
+    - Максимум устройств зависит от тарифа подписки
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: a.lunev1@yandex.ru
+
+servers:
+  - url: https://api.smarthome.com/v1
+    description: Production
+  - url: https://staging-api.smarthome.com/v1
+    description: Staging
+
+tags:
+  - name: Devices
+    description: Управление устройствами
+  - name: Telemetry
+    description: Телеметрия и данные с устройств
+  - name: Commands
+    description: Команды устройствам
+  - name: Houses
+    description: Управление домами и помещениями
+
+security:
+  - BearerAuth: []
+
+paths:
+  /devices:
+    get:
+      tags:
+        - Devices
+      summary: Получить список устройств пользователя
+      description: Возвращает все устройства принадлежащие пользователю
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [online, offline, error, pending]
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: location
+          in: query
+          schema:
+            type: string
+        - name: houseId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Device'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Devices
+      summary: Добавить новое устройство
+      description: Добавляет устройство в систему (устройство должно быть предварительно зарегистрировано через Vendor Service)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDeviceRequest'
+      responses:
+        '201':
+          description: Устройство создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Превышен лимит устройств
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: limit_exceeded
+                message: Maximum number of devices reached
+                limitType: max_devices
+                currentValue: 10
+                maxValue: 10
+
+  /devices/{deviceId}:
+    get:
+      tags:
+        - Devices
+      summary: Получить устройство по ID
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Devices
+      summary: Обновить устройство
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDeviceRequest'
+      responses:
+        '200':
+          description: Устройство обновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Devices
+      summary: Удалить устройство
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Устройство удалено
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /devices/{deviceId}/state:
+    get:
+      tags:
+        - Devices
+      summary: Получить текущее состояние устройства
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceState'
+
+  /telemetry/{deviceId}:
+    get:
+      tags:
+        - Telemetry
+      summary: Получить историю телеметрии
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: metric
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 1000
+            maximum: 10000
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Telemetry'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /telemetry/{deviceId}/live:
+    get:
+      tags:
+        - Telemetry
+      summary: WebSocket для live-телеметрии
+      description: Подключение к WebSocket для получения телеметрии в реальном времени
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '101':
+          description: WebSocket переключение протокола
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================
+  # COMMANDS
+  # ============================================
+  /devices/{deviceId}/command:
+    post:
+      tags:
+        - Commands
+      summary: Отправить команду устройству
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandRequest'
+      responses:
+        '202':
+          description: Команда принята в обработку
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Command'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: Сервис недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /commands/{commandId}:
+    get:
+      tags:
+        - Commands
+      summary: Получить статус команды
+      parameters:
+        - name: commandId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Command'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /houses:
+    get:
+      tags:
+        - Houses
+      summary: Получить список домов пользователя
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/House'
+
+    post:
+      tags:
+        - Houses
+      summary: Создать новый дом
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateHouseRequest'
+      responses:
+        '201':
+          description: Дом создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/House'
+
+  /houses/{houseId}:
+    get:
+      tags:
+        - Houses
+      summary: Получить информацию о доме
+      parameters:
+        - name: houseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/House'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Houses
+      summary: Обновить информацию о доме
+      parameters:
+        - name: houseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateHouseRequest'
+      responses:
+        '200':
+          description: Дом обновлён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/House'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Houses
+      summary: Удалить дом
+      parameters:
+        - name: houseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Дом удалён
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /houses/{houseId}/devices:
+    get:
+      tags:
+        - Houses
+      summary: Получить устройства в доме
+      parameters:
+        - name: houseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
+
+    post:
+      tags:
+        - Houses
+      summary: Добавить устройство в дом
+      parameters:
+        - name: houseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deviceId:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Устройство добавлено в дом
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /houses/{houseId}/members:
+    get:
+      tags:
+        - Houses
+      summary: Получить участников дома
+      parameters:
+        - name: houseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HouseMember'
+
+    post:
+      tags:
+        - Houses
+      summary: Пригласить участника в дом
+      parameters:
+        - name: houseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                role:
+                  type: string
+                  enum: [admin, member]
+      responses:
+        '201':
+          description: Участник приглашён
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Device:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [LIGHT, THERMOSTAT, CAMERA, LOCK, SENSOR, GATE]
+        name:
+          type: string
+        location:
+          type: string
+        status:
+          type: string
+          enum: [online, offline, error, pending]
+        lastSeen:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateDeviceRequest:
+      type: object
+      required:
+        - type
+        - name
+      properties:
+        type:
+          type: string
+          enum: [LIGHT, THERMOSTAT, CAMERA, LOCK, SENSOR, GATE]
+        name:
+          type: string
+        location:
+          type: string
+        metadata:
+          type: object
+
+    UpdateDeviceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        location:
+          type: string
+        metadata:
+          type: object
+
+    DeviceState:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+        state:
+          type: object
+          description: Динамическая структура в зависимости от типа устройства
+        updatedAt:
+          type: string
+          format: date-time
+      example:
+        deviceId: 550e8400-e29b-41d4-a716-446655440000
+        state:
+          power: true
+          brightness: 80
+          color: '#FFFFFF'
+          temperature: 25
+        updatedAt: 2024-01-15T10:30:00Z
+
+    Telemetry:
+      type: object
+      properties:
+        time:
+          type: string
+          format: date-time
+        deviceId:
+          type: string
+          format: uuid
+        metricName:
+          type: string
+        metricValue:
+          type: number
+        unit:
+          type: string
+
+    Command:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        deviceId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        action:
+          type: string
+        payload:
+          type: object
+        status:
+          type: string
+          enum: [pending, sent, completed, failed, timeout]
+        errorMessage:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    CommandRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+        payload:
+          type: object
+
+    House:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ownerId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateHouseRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+
+    UpdateHouseRequest:
+      type: object
+      properties:
+        name:
+          type: string
+
+    HouseMember:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [owner, admin, member]
+        invitedAt:
+          type: string
+          format: date-time
+        acceptedAt:
+          type: string
+          format: date-time
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        hasMore:
+          type: boolean
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+  responses:
+    Unauthorized:
+      description: Неавторизованный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: unauthorized
+            message: Invalid or expired token
+
+    Forbidden:
+      description: Доступ запрещён
+      content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: forbidden
+                message: Access denied
+
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: not_found
+            message: Resource not found
+
+    BadRequest:
+      description: Неверный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: bad_request
+            message: Validation failed
+            details:
+              field: name
+              reason: required

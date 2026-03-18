@@ -1,0 +1,55 @@
+@startuml c4_core_component
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C4 Component Diagram - Smart Home Core Service
+
+' Настройки для лучшего расположения
+skinparam nodesep 60
+skinparam ranksep 60
+
+' Явное направление сверху вниз
+top to bottom direction
+
+' Граница основного сервиса
+Container_Boundary(core_container, "Smart Home Core Service", "Go/Python") {
+    
+    Component(api_controller, "API Controller", "REST API + WebSocket", "HTTP запросы, WebSocket, Push уведомления")
+    
+    Component(device_component, "Device Management Component", "Business Logic", "Реестр устройств, инвентарь, статусы")
+    
+    Component(telemetry_component, "Telemetry Component", "Business Logic", "Приём, обработка, хранение телеметрии")
+    
+    Component(command_component, "Command Component", "Business Logic", "Отправка команд устройствам")
+    
+    ComponentDb(core_db, "Core Database", "PostgreSQL + TimescaleDB", "Устройства, состояния, телеметрия")
+}
+
+
+System_Ext(mobile_app, "Mobile Application", "Приложение пользователя")
+System_Ext(vendor_service, "Vendor Integration Service", "MQTT, адаптеры API вендоров")
+System_Ext(account_service, "Account & Billing Service", "Лимиты, подписки")
+
+System_Ext(web_app, "Web Application", "Личный кабинет пользователя")
+
+api_controller -[hidden]-> device_component
+api_controller -[hidden]-> telemetry_component
+api_controller -[hidden]-> command_component
+
+Rel(mobile_app, api_controller, "REST API + WebSocket + Push", "HTTPS/WSS")
+Rel(web_app, api_controller, "REST API + WebSocket", "HTTPS/WSS")
+
+Rel(account_service, api_controller, "События подписки", "HTTPS/JSON")
+Rel(api_controller, account_service, "Проверка лимитов", "HTTPS/JSON")
+
+Rel(vendor_service, api_controller, "Поток телеметрии", "HTTPS/JSON")
+Rel(api_controller, vendor_service, "Запрос команды", "HTTPS/JSON")
+
+Rel(api_controller, device_component, "CRUD устройств", "Internal")
+Rel(api_controller, telemetry_component, "Обработка телеметрии", "Internal")
+Rel(api_controller, command_component, "Отправка команд", "Internal")
+
+Rel(device_component, core_db, "SQL", "Read/Write")
+Rel(telemetry_component, core_db, "SQL + TimeSeries", "Read/Write")
+Rel(command_component, core_db, "SQL", "Read/Write")
+
+@enduml
